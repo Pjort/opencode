@@ -32,16 +32,12 @@ export function rewrite<ID extends string>(
   const replacement = resolve(input.specifier, { ...input, settings }) ?? plain
   const translated = options(replacement, input.modelID, settings)
   if (target.package !== undefined || replacement !== input.specifier) target.package = replacement
-  target.settings =
-    target.settings === undefined
-      ? undefined
-      : {
-          ...translated.settings,
-          ...(!Provider.builtinPackages.has(input.specifier) &&
-          replacement === "@opencode/ai/providers/openai-compatible"
-            ? { provider: input.canonical ?? input.providerID }
-            : {}),
-        }
+  // Without `provider`, the native compatible package reports every AI SDK-mapped host as `openai-compatible`.
+  const identity =
+    replacement === "@opencode/ai/providers/openai-compatible" && !Provider.builtinPackages.has(input.specifier)
+      ? { provider: input.canonical ?? input.providerID }
+      : {}
+  target.settings = target.settings === undefined ? undefined : { ...translated.settings, ...identity }
   target.headers = Provider.mergeHeaders(translated.headers, target.headers)
   target.body = Provider.mergeOverlay(translated.body, target.body)
   target.variants = target.variants?.map((variant) => {
